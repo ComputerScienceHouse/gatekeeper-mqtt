@@ -30,9 +30,9 @@ mongoClient.connect().then(() => {
     }
     const insertedKey = await db.collection("keys").insertOne({
       // Make sure it's something at least reasonable...
-      _id: crypto.randomBytes(16).toString("hex"),
+      _id: crypto.randomBytes(18).toString("hex"),
       userId: req.body.userId,
-      // No uid, so we'll leave it be for now...
+      // Not created yet, so we'll just leave it disabled for now
       enabled: false,
     });
     res.json({
@@ -182,7 +182,7 @@ mongoClient.connect().then(() => {
   });
 
   app.post("/doors/:doorId/unlock", async (req, res) => {
-    await client.publish(`gk/${req.params.doorId}/unlock`, "");
+    client.publish(`gk/${req.params.doorId}/unlock`, "");
     res.status(204).send(null);
   });
 
@@ -192,7 +192,7 @@ mongoClient.connect().then(() => {
     for await (const door of doors) {
       console.log("Subscribing to door", door._id);
       const prefix = `gk/${door._id}/`;
-      client.subscribe(prefix + "fetch_user");
+      // client.subscribe(prefix + "fetch_user");
       client.subscribe(prefix + "access_requested");
       client.subscribe(prefix + "heartbeat");
     }
@@ -207,22 +207,10 @@ mongoClient.connect().then(() => {
       return;
     }
     console.log(topic, payload);
-    if (topic.endsWith("/fetch_user")) {
-      // We can be clever about this!
-      const doorId = topic.slice(3, -11);
-      const key = await db.collection("keys").findOne(
-        {
-          uid: payload.uid,
-          enabled: true,
-        },
-        {_id: 1}
-      );
-      await client.publish(`gk/${doorId}/user_response`, key ? key._id : "");
-    } else if (topic.endsWith("/access_requested")) {
+    if (topic.endsWith("/access_requested")) {
       const doorId = topic.slice(3, -17);
-      // Here, we evaluate group membership
       const key = await db.collection("keys").findOne({
-        _id: payload.association,
+        _id: payload.association || payload.uid,
         enabled: true,
       });
       // Doesn't exist??
@@ -271,7 +259,7 @@ mongoClient.connect().then(() => {
       // If there's no ticket for the user, assume they're not allowed (undefined)
       if (granted) {
         console.log(`Key ${key._id} is unlocking ${doorId}!`);
-        await client.publish(`gk/${doorId}/unlock`);
+        client.publish(`gk/${doorId}/unlock`);
       } else {
         console.log(
           `Attempted unlock of ${doorId} by ${key._id}! Not allowed...`
