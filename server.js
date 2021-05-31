@@ -210,7 +210,7 @@ mongoClient.connect().then(() => {
     if (topic.endsWith("/access_requested")) {
       const doorId = topic.slice(3, -17);
       const key = await db.collection("keys").findOne({
-        _id: payload.association || payload.uid,
+        _id: payload.association,
         enabled: true,
       });
       // Doesn't exist??
