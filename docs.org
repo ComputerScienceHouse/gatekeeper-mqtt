@@ -1,0 +1,28 @@
+* /doors
+  Only for RTPs!
+** /doors/:doorId/status
+   Get heartbeat state of door
+** /doors
+   List of doors
+** /doors/:doorId/unlock
+   Unlock door
+* /admin
+** /admin/users
+*** PUT /admin/users
+   Add user
+*** GET /admin/users/:id
+   Fetch user groups
+*** PATCH /admin/users/:id
+   Modify user data
+** /admin/keys
+*** PUT /admin/keys
+   Add a key for a user
+*** PATCH /admin/keys/:id
+   Update a key
+*** DELETE /admin/keys/by-user
+   Delete all keys attached to a user
+*** DELETE /admin/keys/:keyId
+   Delete a key
+* /projects
+** GET /projects/by-key/:keyId
+   Fetches user details from LDAP attached to the key with the given ID (from the member project realm)
