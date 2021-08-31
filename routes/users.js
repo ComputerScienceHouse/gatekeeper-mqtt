@@ -39,6 +39,15 @@ router.put("/", async (req, res) => {
     });
     return;
   }
+  // Already exists...
+  if (
+    await req.ctx.db.collection("users").countDocuments({
+      id: req.body.id,
+    })
+  ) {
+    res.status(409).json({message: "User already exists"});
+    return;
+  }
 
   if (req.body.groups && !Array.isArray(req.body.groups)) {
     res.status(422).json({
