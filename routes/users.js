@@ -1,4 +1,36 @@
 const router = require("express").Router();
+const ldap = require("../ldap");
+
+function findUserByUID(uid) {
+  return new Promise((resolve, reject) => {
+    ldap.client.search(
+      "cn=users,cn=accounts,dc=csh,dc=rit,dc=edu",
+      {
+        filter: `(uid=${uid})`,
+        scope: "sub",
+        paged: true,
+        sizeLimit: 1,
+      },
+      (err, res) => {
+        if (err) {
+          reject(err);
+        } else {
+          // Don't leak memory:
+          function onSearchEntry(entry) {
+            resolve(entry);
+            res.removeListener("end", onEnd);
+          }
+          function onEnd() {
+            res.removeListener("searchEntry", onSearchEntry);
+            reject(new Error("User not found!"));
+          }
+          res.once("searchEntry", onSearchEntry);
+          res.once("end", onEnd);
+        }
+      }
+    );
+  });
+}
 
 router.put("/", async (req, res) => {
   if (typeof req.body.id != "string") {
@@ -56,6 +88,17 @@ router.patch("/:id", async (req, res) => {
       $set: updates,
     }
   );
+});
+
+// I acknowledge this is not ideal.
+router.get("/uuid-by-uid/:uid", async (req, res) => {
+  console.log("uuid by uid:", req.params.uid);
+  const user = await findUserByUID(req.params.uid);
+  return res.json({
+    ipaUniqueID: user.attributes
+      .find((attribute) => attribute.type == "ipaUniqueID")
+      ._vals[0].toString("utf8"),
+  });
 });
 
 module.exports = router;
