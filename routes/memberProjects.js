@@ -32,6 +32,7 @@ function findUser(id) {
   });
 }
 
+const ARRAYS = new Set(["memberOf", "mail", "objectClass", "ipaSshPubKey"]);
 router.get("/by-key/:associationId", async (req, res) => {
   const key = await req.ctx.db.collection("keys").findOne({
     memberProjectsId: req.params.associationId,
@@ -52,9 +53,19 @@ router.get("/by-key/:associationId", async (req, res) => {
 
   const response = {};
   for (const attribute of user.attributes) {
-    response[attribute.type] = attribute._vals
-      .map((value) => value.toString("utf8"))
-      .join(",");
+    if (attribute.type == "jpegPhoto") {
+      response[attribute.type] = attribute._vals[0].toString("base64");
+    } else {
+      const values = attribute._vals.map((value) => value.toString("utf8"));
+      if (ARRAYS.has(attribute.type)) {
+        response[attribute.type] = values;
+      } else {
+        if (values.length > 1) {
+          console.warn(`${attribute.type} has many values!!`);
+        }
+        response[attribute.type] = values.join(",");
+      }
+    }
   }
 
   res.json({

@@ -107,6 +107,9 @@ router.get("/uuid-by-uid/:uid", async (req, res) => {
     ipaUniqueID: user.attributes
       .find((attribute) => attribute.type == "ipaUniqueID")
       ._vals[0].toString("utf8"),
+    groups: user.attributes
+      .find((attribute) => attribute.type == "ipaUniqueID")
+      ._vals.map((value) => value.toString("utf8")),
   });
 });
 
