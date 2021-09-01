@@ -5,6 +5,8 @@ const bodyParser = require("body-parser");
 
 const {doorHeartbeats} = require("./state");
 
+const auth = require("./auth");
+
 // API routes
 const memberProjects = require("./routes/memberProjects");
 const doors = require("./routes/doors");
@@ -29,10 +31,28 @@ mongoClient.connect().then(() => {
     next();
   });
 
-  app.use("/projects", memberProjects);
-  app.use("/doors", doors);
-  app.use("/admin/keys", keys);
-  app.use("/admin/users", users);
+  app.use(
+    "/projects",
+    auth("projects"),
+    (req, res, next) => {
+      req.associationType = "memberProjectsId";
+      next();
+    },
+    memberProjects
+  );
+  // Make life easier for drink admins for now...
+  app.use(
+    "/drink",
+    auth("drink"),
+    (req, res, next) => {
+      req.associationType = "drinkId";
+      next();
+    },
+    memberProjects
+  );
+  app.use("/doors", auth("admin"), doors);
+  app.use("/admin/keys", auth("admin"), keys);
+  app.use("/admin/users", auth("admin"), users);
 
   client.on("connect", async () => {
     console.log("Connect");

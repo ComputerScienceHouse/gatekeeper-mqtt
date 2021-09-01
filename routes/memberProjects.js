@@ -35,7 +35,7 @@ function findUser(id) {
 const ARRAYS = new Set(["memberOf", "mail", "objectClass", "ipaSshPubKey"]);
 router.get("/by-key/:associationId", async (req, res) => {
   const key = await req.ctx.db.collection("keys").findOne({
-    memberProjectsId: req.params.associationId,
+    [req.associationType]: req.params.associationId,
   });
 
   if (!key) {
