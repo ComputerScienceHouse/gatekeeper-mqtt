@@ -102,15 +102,23 @@ router.patch("/:id", async (req, res) => {
 // I acknowledge this is not ideal.
 router.get("/uuid-by-uid/:uid", async (req, res) => {
   console.log("uuid by uid:", req.params.uid);
-  const user = await findUserByUID(req.params.uid);
-  return res.json({
-    ipaUniqueID: user.attributes
-      .find((attribute) => attribute.type == "ipaUniqueID")
-      ._vals[0].toString("utf8"),
-    groups: user.attributes
-      .find((attribute) => attribute.type == "memberOf")
-      ._vals.map((value) => value.toString("utf8")),
-  });
+  try {
+    const user = await findUserByUID(req.params.uid);
+    return res.json({
+      ipaUniqueID: user.attributes
+        .find((attribute) => attribute.type == "ipaUniqueID")
+        ._vals[0].toString("utf8"),
+      groups: user.attributes
+        .find((attribute) => attribute.type == "memberOf")
+        ._vals.map((value) => value.toString("utf8")),
+    });
+  } catch (err) {
+    if (err.message == "User not found!") {
+      return res.status(404).json({message: "User not found"});
+    } else {
+      throw err;
+    }
+  }
 });
 
 module.exports = router;
