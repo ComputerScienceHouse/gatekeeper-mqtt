@@ -116,6 +116,8 @@ router.get("/uuid-by-uid/:uid", async (req, res) => {
     if (err.message == "User not found!") {
       return res.status(404).json({message: "User not found"});
     } else {
+      console.error("Error looking up user", err);
+      res.status(500).json({error: err.stack});
       throw err;
     }
   }
