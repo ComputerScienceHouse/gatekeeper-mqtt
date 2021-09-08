@@ -5,7 +5,6 @@ const resolve = util.promisify(dns.resolveSrv);
 
 // TODO: This is a race condition!
 resolve("_ldap._tcp.csh.rit.edu").then((records) => {
-  console.log("Resolved!");
   module.exports.client = ldap.createClient({
     url: records.map((record) => `ldap://${record.name}:${record.port}`),
   });
@@ -16,6 +15,7 @@ resolve("_ldap._tcp.csh.rit.edu").then((records) => {
       if (err) {
         throw err;
       }
+      console.log("LDAP is bound!");
     }
   );
 });

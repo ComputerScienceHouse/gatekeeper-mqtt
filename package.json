@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "kube": "GK_MQTT_SERVER=mqtts://$MOSQUITTO_SERVICE_HOST:$MOSQUITTO_SERVICE_PORT node server.js"
   },
   "author": "Mary Strodl",
   "license": "MIT",

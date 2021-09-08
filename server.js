@@ -14,11 +14,27 @@ const keys = require("./routes/keys");
 const users = require("./routes/users");
 
 // Apparently, automatic reconnection is the default!
-const mongoClient = new mongo.MongoClient(process.env.MONGO_HOST);
-mongoClient.connect().then(() => {
+const mongoClient = new mongo.MongoClient(process.env.GK_MONGO_SERVER);
+const connectionPromise = mongoClient.connect();
+connectionPromise.then(() => {
+  console.log("DB Connection opened!");
   const db = mongoClient.db("gatekeeper");
 
-  const client = mqtt.connect(process.env.GK_MQTT_SERVER);
+  console.log("Opening MQTT @", process.env.GK_MQTT_SERVER);
+  const client = mqtt.connect(process.env.GK_MQTT_SERVER, {
+    username: process.env.GK_MQTT_USERNAME,
+    password: process.env.GK_MQTT_PASSWORD,
+
+    reconnectPeriod: 1000,
+    rejectUnauthorized: false,
+  });
+
+  client.on("error", (err) => {
+    console.log("MQTT errored!", err);
+  });
+  client.on("offline", () => {
+    console.log("Client went offline?");
+  });
 
   const app = express();
   app.listen(process.env.GK_HTTP_PORT || 3000);
@@ -55,7 +71,7 @@ mongoClient.connect().then(() => {
   app.use("/admin/users", auth("admin"), users);
 
   client.on("connect", async () => {
-    console.log("Connect");
+    console.log("Connected to MQTT broker!");
     const doors = await db.collection("doors").find({}, {_id: 1});
     for await (const door of doors) {
       console.log("Subscribing to door", door._id);
@@ -141,4 +157,7 @@ mongoClient.connect().then(() => {
       console.log(`ACKing a heartbeat from ${doorId}!`);
     }
   });
+});
+connectionPromise.catch((err) => {
+  console.error("Failed connecting to mongo", err);
 });

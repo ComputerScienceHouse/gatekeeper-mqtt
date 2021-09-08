@@ -5,4 +5,4 @@ RUN npm i -g pnpm
 COPY . /app
 WORKDIR /app
 RUN pnpm i
-CMD pnpm start
+CMD pnpm run kube
