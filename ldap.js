@@ -6,7 +6,7 @@ const resolve = util.promisify(dns.resolveSrv);
 // TODO: This is a race condition!
 resolve("_ldap._tcp.csh.rit.edu").then((records) => {
   module.exports.client = ldap.createClient({
-    url: records.map((record) => `ldaps://${record.name}:${record.port}`),
+    url: records.map((record) => `ldap://${record.name}:${record.port}`),
     reconnect: true,
   });
   module.exports.client.bind(
