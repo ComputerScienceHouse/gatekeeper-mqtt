@@ -42,7 +42,7 @@ router.put("/", async (req, res) => {
   // Already exists...
   if (
     await req.ctx.db.collection("users").countDocuments({
-      id: req.body.id,
+      id: {$eq: req.body.id},
     })
   ) {
     res.status(409).json({message: "User already exists"});
@@ -92,7 +92,7 @@ router.patch("/:id", async (req, res) => {
     }
   }
   await req.ctx.db.collection("users").updateOne(
-    {id: req.params.id},
+    {id: {$eq: req.params.id}},
     {
       $set: updates,
     }
@@ -104,6 +104,8 @@ router.get("/uuid-by-uid/:uid", async (req, res) => {
   console.log("uuid by uid:", req.params.uid);
   try {
     const user = await findUserByUID(req.params.uid);
+    console.log("Got user", user);
+
     return res.json({
       ipaUniqueID: user.attributes
         .find((attribute) => attribute.type == "ipaUniqueID")

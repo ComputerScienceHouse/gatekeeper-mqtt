@@ -45,7 +45,7 @@ router.patch("/:id", async (req, res) => {
   }
   await req.ctx.db.collection("keys").updateOne(
     {
-      _id: req.params.id,
+      _id: {$eq: req.params.id},
     },
     {
       $set: updates,
@@ -61,7 +61,7 @@ router.delete("/by-user", async (req, res) => {
     });
   }
   const results = await req.ctx.db.collection("keys").deleteMany({
-    userId: req.body.userId,
+    userId: {$eq: req.body.userId},
   });
   if (results.deletedCount) {
     return res.status(204).send(null);
@@ -83,7 +83,7 @@ router.delete("/:keyId", async (req, res) => {
     return;
   }
   const results = await req.ctx.db.collection("keys").deleteOne({
-    _id: id,
+    _id: {$eq: id},
   });
   if (results.deletedCount) {
     return res.status(204).send(null);

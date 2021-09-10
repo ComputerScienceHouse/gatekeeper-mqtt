@@ -94,21 +94,21 @@ connectionPromise.then(() => {
     if (topic.endsWith("/access_requested")) {
       const doorId = topic.slice(3, -17);
       const key = await db.collection("keys").findOne({
-        doorsId: payload.association,
-        enabled: true,
+        doorsId: {$eq: payload.association},
+        enabled: {$eq: true},
       });
       // Doesn't exist??
       if (!key) return;
       const userTicket = await db.collection("userTickets").findOne({
-        userId: key.userId,
-        doorId,
+        userId: {$eq: key.userId},
+        doorId: {$eq: doorId},
       });
       console.log(userTicket);
       let granted = userTicket?.granted;
       console.log(granted);
       if (granted === undefined) {
         const user = await db.collection("users").findOne({
-          id: key.userId,
+          id: {$eq: key.userId},
         });
         if (user) {
           const groupTicket = await db.collection("groupTickets").findOne(
