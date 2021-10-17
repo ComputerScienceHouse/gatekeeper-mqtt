@@ -9,14 +9,17 @@ resolve("_ldap._tcp.csh.rit.edu").then((records) => {
     url: records.map((record) => `ldap://${record.name}:${record.port}`),
     reconnect: true,
   });
-  module.exports.client.bind(
-    process.env.GK_LDAP_BIND_DN,
-    process.env.GK_LDAP_PASSWORD,
-    (err) => {
-      if (err) {
-        throw err;
+  module.exports.client.on("connect", () => {
+    console.log("Client connected. Binding...");
+    module.exports.client.bind(
+      process.env.GK_LDAP_BIND_DN,
+      process.env.GK_LDAP_PASSWORD,
+      (err) => {
+        if (err) {
+          throw err;
+        }
+        console.log("LDAP is bound!");
       }
-      console.log("LDAP is bound!");
-    }
-  );
+    );
+  });
 });
