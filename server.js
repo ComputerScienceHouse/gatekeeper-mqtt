@@ -2,6 +2,7 @@ const express = require("express");
 const mqtt = require("mqtt");
 const mongo = require("mongodb");
 const bodyParser = require("body-parser");
+const morgan = require("morgan");
 
 const {doorHeartbeats} = require("./state");
 
@@ -38,6 +39,9 @@ connectionPromise.then(() => {
 
   const app = express();
   app.listen(process.env.GK_HTTP_PORT || 3000);
+  app.use(
+    morgan(":method :url :status :res[content-length] - :response-time ms")
+  );
   app.use(bodyParser.json());
   app.use((req, res, next) => {
     req.ctx = {
@@ -83,6 +87,7 @@ connectionPromise.then(() => {
   });
 
   client.on("message", async (topic, message) => {
+    console.log("Got a message from server", topic, message);
     let payload;
     try {
       payload = JSON.parse(message.toString("utf8"));
@@ -99,10 +104,17 @@ connectionPromise.then(() => {
       });
       // Doesn't exist??
       if (!key) return;
-      const userTicket = await db.collection("userTickets").findOne({
-        userId: {$eq: key.userId},
-        doorId: {$eq: doorId},
-      });
+      const userTicket = await db.collection("userTickets").findOne(
+        {
+          userId: {$in: [key.userId, "*"]},
+          doorId: {$in: [doorId, "*"]},
+        },
+        {
+          sort: {
+            priority: -1,
+          },
+        }
+      );
       console.log(userTicket);
       let granted = userTicket?.granted;
       console.log(granted);

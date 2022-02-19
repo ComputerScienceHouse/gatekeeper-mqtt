@@ -1,6 +1,8 @@
 const router = require("express").Router();
 const crypto = require("crypto");
 
+const REALM_NAMES = ["doors", "drink", "memberProjects"];
+
 // First, PUT /keys with details of user key is for
 // Receive a keyId back which is our association
 // Register key using association and send back the now-randomised UID
@@ -14,9 +16,15 @@ router.put("/", async (req, res) => {
     });
     return;
   }
+  if (typeof req.body.uid != "string") {
+    res.status(422).json({
+      message: "No 'uid' field specified",
+    });
+    return;
+  }
 
   const keys = {};
-  for (const name of ["doors", "drink", "memberProjects"]) {
+  for (const name of REALM_NAMES) {
     keys[name + "Id"] = crypto.randomBytes(18).toString("hex");
   }
 
@@ -24,6 +32,7 @@ router.put("/", async (req, res) => {
     // Make sure it's something at least reasonable...
     _id: crypto.randomBytes(18).toString("hex"),
     userId: req.body.userId,
+    uid: req.body.uid,
     // Not created yet, so we'll just leave it disabled for now
     enabled: false,
 
@@ -31,7 +40,7 @@ router.put("/", async (req, res) => {
   });
   res.json({
     keyId: insertedKey.insertedId,
-
+    uid: req.body.uid,
     ...keys,
   });
 });
@@ -52,6 +61,31 @@ router.patch("/:id", async (req, res) => {
     }
   );
   res.status(204).send(null);
+});
+
+router.get("/by-association/:id", async (req, res) => {
+  const key = await req.ctx.db.collection("keys").findOne({
+    $or: REALM_NAMES.map((key) => ({
+      [key + "Id"]: {
+        $eq: req.params.id,
+      },
+    })),
+  });
+
+  if (key) {
+    const data = {
+      keyId: key._id,
+      uid: key.uid,
+    };
+    for (const name of REALM_NAMES) {
+      data[name + "Id"] = key[name + "Id"];
+    }
+    return res.json(data);
+  } else {
+    return res.status(404).json({
+      message: "No such key!",
+    });
+  }
 });
 
 router.delete("/by-user", async (req, res) => {
