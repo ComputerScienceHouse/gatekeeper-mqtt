@@ -5,6 +5,7 @@ const bodyParser = require("body-parser");
 const morgan = require("morgan");
 
 const {doorHeartbeats} = require("./state");
+const {syncUsers} = require("./sync");
 
 const auth = require("./auth");
 
@@ -15,11 +16,36 @@ const keys = require("./routes/keys");
 const users = require("./routes/users");
 
 // Apparently, automatic reconnection is the default!
-const mongoClient = new mongo.MongoClient(process.env.GK_MONGO_SERVER);
+const mongoClient = new mongo.MongoClient(process.env.GK_MONGO_SERVER, {
+  maxPoolSize: 0,
+  minPoolSize: 0,
+});
 const connectionPromise = mongoClient.connect();
-connectionPromise.then(() => {
+connectionPromise.then(async () => {
   console.log("DB Connection opened!");
   const db = mongoClient.db("gatekeeper");
+
+  await db.collection("users").createIndex("id", {unique: true});
+  await db.collection("keys").createIndex("doorsId", {unique: true});
+  await db.collection("keys").createIndex("drinkId", {unique: true});
+  await db.collection("keys").createIndex("memberProjectsId", {unique: true});
+
+  async function nightlyTasks() {
+    console.log("Nightly task time!");
+    await syncUsers(db);
+    console.log("Nigtly tasks completed. Running again in 1 day!");
+    // 1 day
+    setTimeout(nightlyTasks, 1000 * 60 * 60 * 24);
+  }
+  if (process.env.NODE_ENV == "development") {
+    nightlyTasks();
+  } else {
+    const backoff = Math.floor(Math.random() * 1000 * 60 * 60);
+    console.log(
+      `Production. Running our work tasks in ${backoff / 1000 / 60} minutes`
+    );
+    setTimeout(nightlyTasks, backoff);
+  }
 
   console.log("Opening MQTT @", process.env.GK_MQTT_SERVER);
   const client = mqtt.connect(process.env.GK_MQTT_SERVER, {
@@ -104,52 +130,54 @@ connectionPromise.then(() => {
       });
       // Doesn't exist??
       if (!key) return;
-      const userTicket = await db.collection("userTickets").findOne(
-        {
-          userId: {$in: [key.userId, "*"]},
-          doorId: {$in: [doorId, "*"]},
-        },
-        {
-          sort: {
-            priority: -1,
-          },
-        }
-      );
-      console.log(userTicket);
-      let granted = userTicket?.granted;
-      console.log(granted);
+      const user = await db.collection("users").findOne({
+        id: {$eq: key.userId},
+      });
+      if (!user) {
+        console.log("No user found for key?", key);
+        return;
+      }
+      let granted = undefined;
+      if (user.disabled) {
+        granted = false;
+      }
+      // This could be an `else if`, but this feels a little more consistent / cleaner
       if (granted === undefined) {
-        const user = await db.collection("users").findOne({
-          id: {$eq: key.userId},
-        });
-        if (user) {
-          const groupTicket = await db.collection("groupTickets").findOne(
-            {
-              doorId: {
-                $in: ["*", doorId],
-              },
-              groupId: {
-                $in: user.groups ? user.groups.concat("*") : ["*"],
-              },
+        const userTicket = await db.collection("userTickets").findOne(
+          {
+            userId: {$in: [key.userId, "*"]},
+            doorId: {$in: [doorId, "*"]},
+          },
+          {
+            sort: {
+              priority: -1,
             },
-            {
-              sort: {
-                priority: -1,
-              },
-            }
-          );
-          console.log(groupTicket, {
+          }
+        );
+        console.log(userTicket);
+        granted = userTicket?.granted;
+      }
+      if (granted === undefined) {
+        const groupTicket = await db.collection("groupTickets").findOne(
+          {
             doorId: {
               $in: ["*", doorId],
             },
             groupId: {
               $in: user.groups ? user.groups.concat("*") : ["*"],
             },
-          });
-          granted = groupTicket?.granted;
-        } else {
-          console.log("Why isn't there a user?", key, key.userId);
-        }
+          },
+          {
+            sort: {
+              priority: -1,
+            },
+          }
+        );
+        console.log(
+          `Found a group ticket for door=${doorId}/user=${user.id} pair!`,
+          groupTicket
+        );
+        granted = groupTicket?.granted;
       }
 
       // If there's no ticket for the user, assume they're not allowed (undefined)

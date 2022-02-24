@@ -6,9 +6,9 @@ function findUser(id) {
     ldap.client.search(
       "cn=users,cn=accounts,dc=csh,dc=rit,dc=edu",
       {
-        filter: `(ipauniqueid=${id})`,
-        scope: "sub",
-        paged: true,
+        filter: `(ipaUniqueID=${id})`,
+        scope: "one",
+        paged: false,
         sizeLimit: 1,
       },
       (err, res) => {
@@ -32,7 +32,13 @@ function findUser(id) {
   });
 }
 
-const ARRAYS = new Set(["memberOf", "mail", "objectClass", "ipaSshPubKey"]);
+const ARRAYS = new Set([
+  "memberOf",
+  "mail",
+  "objectClass",
+  "ipaSshPubKey",
+  "ibutton",
+]);
 router.get("/by-key/:associationId", async (req, res) => {
   const key = await req.ctx.db.collection("keys").findOne({
     [req.associationType]: {$eq: req.params.associationId},
@@ -40,6 +46,15 @@ router.get("/by-key/:associationId", async (req, res) => {
 
   if (!key) {
     res.status(404).json({message: "Not found"});
+    return;
+  }
+
+  const userDocument = await req.ctx.db.collection("users").findOne({
+    id: {$eq: key.userId},
+    disabled: {$ne: true},
+  });
+  if (!userDocument) {
+    res.status(404).json({message: "User not found or disabled"});
     return;
   }
 

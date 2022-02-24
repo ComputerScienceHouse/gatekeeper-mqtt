@@ -1,14 +1,16 @@
 const router = require("express").Router();
 const ldap = require("../ldap");
+const {syncUser} = require("../sync");
 
-function findUserByUID(uid) {
+function findUser(filter) {
   return new Promise((resolve, reject) => {
     ldap.client.search(
       "cn=users,cn=accounts,dc=csh,dc=rit,dc=edu",
       {
-        filter: `(uid=${uid})`,
-        scope: "sub",
-        paged: true,
+        filter,
+        scope: "one",
+        attributes: ["memberOf", "ipaUniqueID", "nsAccountLock"],
+        paged: false,
         sizeLimit: 1,
       },
       (err, res) => {
@@ -32,88 +34,50 @@ function findUserByUID(uid) {
   });
 }
 
-router.put("/", async (req, res) => {
-  if (typeof req.body.id != "string") {
-    res.status(422).json({
-      message: "No 'userId' field specified",
-    });
-    return;
-  }
-  // Already exists...
-  if (
-    await req.ctx.db.collection("users").countDocuments({
-      id: {$eq: req.body.id},
-    })
-  ) {
-    res.status(409).json({message: "User already exists"});
-    return;
-  }
-
-  if (req.body.groups && !Array.isArray(req.body.groups)) {
-    res.status(422).json({
-      message: "Invalid groups specified",
-    });
-    return;
-  }
-
-  try {
-    await req.ctx.db.collection("users").insertOne({
-      id: req.body.id,
-      groups: req.body.groups || [],
-    });
-  } catch (err) {
-    res.status(409).json({
-      message: "User already exists",
-    });
-    return;
-  }
-  res.status(204).send(null);
-});
+function validId(id) {
+  return id.match(/^[a-zA-Z0-9\-]+$/m);
+}
 
 router.get("/:id", async (req, res) => {
-  const user = await req.ctx.db
-    .collection("users")
-    .findOne({id: req.params.id});
-  if (!user) {
-    return res.status(404).json({
-      message: "Not found",
+  if (!validId(req.params.id)) {
+    res.status(422).json({
+      message: "Invalid 'userId' field",
     });
+    return;
+  }
+  let user = await req.ctx.db.collection("users").findOne({id: req.params.id});
+  if (!user) {
+    let userData = null;
+    try {
+      userData = await findUser(`(ipaUniqueID=${req.body.id})`);
+    } catch (err) {
+      res.status(404).json({message: "Not found"});
+    }
+    user = await syncUser(req.ctx.db, userData);
   }
   res.json({
     id: user.id,
+    disabled: user.disabled,
     groups: user.groups,
   });
 });
 
-router.patch("/:id", async (req, res) => {
-  for (const key of ["groups", "id"]) {
-    if (key in req.body) {
-      updates[key] = req.body[key];
-    }
-  }
-  await req.ctx.db.collection("users").updateOne(
-    {id: {$eq: req.params.id}},
-    {
-      $set: updates,
-    }
-  );
-});
-
 // I acknowledge this is not ideal.
 router.get("/uuid-by-uid/:uid", async (req, res) => {
+  if (!validId(req.params.uid)) {
+    res.status(422).json({
+      message: "Invalid 'userId' field",
+    });
+    return;
+  }
   console.log("uuid by uid:", req.params.uid);
   try {
-    const user = await findUserByUID(req.params.uid);
-    console.log("Got user", user);
+    const user = await findUser(`(uid=${req.params.uid})`);
+    // Ensure we're updated on DB-side
+    const userDocument = await syncUser(req.ctx.db, user);
+    console.log("Got user", userDocument);
 
-    return res.json({
-      ipaUniqueID: user.attributes
-        .find((attribute) => attribute.type == "ipaUniqueID")
-        ._vals[0].toString("utf8"),
-      groups: user.attributes
-        .find((attribute) => attribute.type == "memberOf")
-        ._vals.map((value) => value.toString("utf8")),
-    });
+    return res.json(userDocument);
   } catch (err) {
     if (err.message == "User not found!") {
       return res.status(404).json({message: "User not found"});
