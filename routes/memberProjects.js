@@ -108,7 +108,6 @@ router.get("/impersonate/:associationId", async (req, res) => {
     return;
   }
 
-
   let user;
   try {
     user = await findUser(key.userId);
