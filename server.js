@@ -14,6 +14,7 @@ const memberProjects = require("./routes/memberProjects");
 const doors = require("./routes/doors");
 const keys = require("./routes/keys");
 const users = require("./routes/users");
+const mobile = require("./routes/mobile");
 
 // Apparently, automatic reconnection is the default!
 const mongoClient = new mongo.MongoClient(process.env.GK_MONGO_SERVER, {
@@ -64,7 +65,7 @@ connectionPromise.then(async () => {
   });
 
   const app = express();
-  app.listen(process.env.GK_HTTP_PORT || 3000);
+  app.listen(process.env.GK_HTTP_PORT || 3000, '0.0.0.0');
   app.use(
     morgan(":method :url :status :res[content-length] - :response-time ms")
   );
@@ -99,6 +100,7 @@ connectionPromise.then(async () => {
   app.use("/doors", auth("admin"), doors);
   app.use("/admin/keys", auth("admin"), keys);
   app.use("/admin/users", auth("admin"), users);
+  app.use("/mobile", mobile);
 
   client.on("connect", async () => {
     console.log("Connected to MQTT broker!");
