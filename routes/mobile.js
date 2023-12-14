@@ -33,7 +33,7 @@ function findUser(filter) {
           res.once("searchEntry", onSearchEntry);
           res.once("end", onEnd);
         }
-      }
+      },
     );
   });
 }
@@ -51,7 +51,7 @@ router.use(async (req, response, next) => {
     return;
   }
   const payload = JSON.parse(Buffer.from(parts[1], "base64").toString("utf8"));
-  if (payload.azp != "devin") {
+  if (payload.azp != "devin" && payload.azp != "devin2") {
     response
       .status(403)
       .send("Tokens issued for other clients are not allowed");
@@ -63,7 +63,7 @@ router.use(async (req, response, next) => {
       headers: {
         Authorization: req.headers.authorization,
       },
-    }
+    },
   );
   if (res.status != 200) {
     response.status(403).send("Unauthorized");
