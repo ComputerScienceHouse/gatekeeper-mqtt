@@ -40,6 +40,10 @@ function findUser(filter) {
 
 router.use(async (req, response, next) => {
   const fetch = (await fetchPromise).default;
+  if (!req.headers.authorization) {
+    response.status(401).send("No authorization header");
+    return;
+  }
   const tokenParts = req.headers.authorization.split(" ");
   if (tokenParts.length != 2) {
     response.status(401).send("Invalid authorization header");
@@ -51,7 +55,7 @@ router.use(async (req, response, next) => {
     return;
   }
   const payload = JSON.parse(Buffer.from(parts[1], "base64").toString("utf8"));
-  if (payload.azp != "devin" && payload.azp != "devin2") {
+  if (payload.scope.split(" ").includes("gatekeeper_provision")) {
     response
       .status(403)
       .send("Tokens issued for other clients are not allowed");
