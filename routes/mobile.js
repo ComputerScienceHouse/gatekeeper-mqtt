@@ -55,7 +55,7 @@ router.use(async (req, response, next) => {
     return;
   }
   const payload = JSON.parse(Buffer.from(parts[1], "base64").toString("utf8"));
-  if (payload.scope.split(" ").includes("gatekeeper_provision")) {
+  if (!payload.scope.split(" ").includes("gatekeeper_provision")) {
     response
       .status(403)
       .send("Tokens issued for other clients are not allowed");
