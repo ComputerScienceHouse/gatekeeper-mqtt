@@ -31,21 +31,21 @@ connectionPromise.then(async () => {
   await db.collection("keys").createIndex("drinkId", {unique: true});
   await db.collection("keys").createIndex("memberProjectsId", {unique: true});
 
-  async function nightlyTasks() {
-    console.log("Nightly task time!");
+  async function scheduledTasks() {
+    console.log("Scheduled task time!");
     await syncUsers(db);
-    console.log("Nigtly tasks completed. Running again in 1 day!");
-    // 1 day
-    setTimeout(nightlyTasks, 1000 * 60 * 60 * 24);
+    console.log("Tasks completed. Running again in 5 minutes!");
+    // 5 minutes
+    setTimeout(scheduledTasks, 1000 * 60 * 5);
   }
   if (process.env.NODE_ENV == "development") {
-    nightlyTasks();
+    scheduledTasks();
   } else {
     const backoff = Math.floor(Math.random() * 1000 * 60 * 60);
     console.log(
       `Production. Running our work tasks in ${backoff / 1000 / 60} minutes`
     );
-    setTimeout(nightlyTasks, backoff);
+    setTimeout(scheduledTasks, backoff);
   }
 
   console.log("Opening MQTT @", process.env.GK_MQTT_SERVER);
