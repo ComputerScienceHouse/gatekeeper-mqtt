@@ -4,10 +4,12 @@ async function syncUser(db, user) {
   const id = user.attributes
     .find((attribute) => attribute.type == "ipaUniqueID")
     ._vals[0].toString("utf8");
+  let memberOf = user.attributes
+    .find((attribute) => attribute.type == "memberOf");
+  if (!memberOf)
+    return;
   const document = {
-    groups: user.attributes
-      .find((attribute) => attribute.type == "memberOf")
-      ._vals.map((value) => value.toString("utf8")),
+    groups: memberOf._vals.map((value) => value.toString("utf8")),
     disabled:
       user.attributes
         .find((attribute) => attribute.type == "nsAccountLock")
