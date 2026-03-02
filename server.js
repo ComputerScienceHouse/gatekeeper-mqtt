@@ -104,7 +104,7 @@ connectionPromise.then(async () => {
 
   client.on("connect", async () => {
     console.log("Connected to MQTT broker!");
-    const doors = await db.collection("doors").find({}, {_id: 1});
+    const doors = await db.collection("doors").find({}, {projection: {_id: 1}});
     for await (const door of doors) {
       console.log("Subscribing to door", door._id);
       const prefix = `gk/${door._id}/`;

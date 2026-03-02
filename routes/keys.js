@@ -107,17 +107,8 @@ router.delete("/by-user", async (req, res) => {
 });
 
 router.delete("/:keyId", async (req, res) => {
-  let id;
-  try {
-    id = mongo.ObjectId(req.params.keyId);
-  } catch (err) {
-    res.status(422).json({
-      message: err.message,
-    });
-    return;
-  }
   const results = await req.ctx.db.collection("keys").deleteOne({
-    _id: {$eq: id},
+    _id: {$eq: req.params.keyId},
   });
   if (results.deletedCount) {
     return res.status(204).send(null);
