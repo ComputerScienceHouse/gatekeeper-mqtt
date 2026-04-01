@@ -182,15 +182,16 @@ connectionPromise.then(async () => {
         granted = groupTicket?.granted;
       }
 
+      //local time
+      const now = new Date().toLocaleString()
+
       // If there's no ticket for the user, assume they're not allowed (undefined)
       if (granted) {
-        const now = new Date().toLocaleString();
         console.log(
           `[${now}] Key ${key._id} (Door association: ${key.doorsId}) is unlocking ${doorId}!`
         );
         client.publish(`gk/${doorId}/unlock`);
       } else {
-        const now = new Date().toLocaleString();
         console.log(
           `[${now}] Attempted unlock of ${doorId} by ${key._id} (Door association: ${key.doorsId})! Not allowed...`
         );
