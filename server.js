@@ -184,6 +184,14 @@ client.on("message", async (topic, message) => {
       const user = userData?.user || {};
       const username = user.uid || null;
       const name = user.cn || null;
+
+      const dbUser = await db.collection("users").findOne({
+        id: {$eq: key.userId },
+      });
+      if (!dbUser) {
+        console.log("No user found for key?", key);
+        return;
+      }
       // Resolve door name
       let doorName = null;
       const doorDoc = await db.collection("doors").findOne({
