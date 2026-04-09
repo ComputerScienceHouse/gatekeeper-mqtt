@@ -16,6 +16,44 @@ const keys = require("./routes/keys");
 const users = require("./routes/users");
 const mobile = require("./routes/mobile");
 
+const https = require("https");
+//fetch user from the https endpoint
+function fetchUser(endpoint, token, memberProjectsId) {
+  return new Promise((resolve, reject) => {
+    const url = new URL(`${endpoint}/projects/by-key/${memberProjectsId}`);
+
+    const req = https.request(
+      url,
+      {
+        method: "GET",
+        headers: {
+          Authorization: token,
+        },
+      },
+      (res) => {
+        let data = "";
+
+        res.on("data", (chunk) => (data += chunk));
+
+        res.on("end", () => {
+          if (res.statusCode === 200) {
+            try {
+              resolve(JSON.parse(data));
+            } catch {
+              reject(new Error("Invalid JSON response"));
+            }
+          } else {
+            reject(new Error(`HTTP ${res.statusCode}`));
+          }
+        });
+      }
+    );
+
+    req.on("error", reject);
+    req.end();
+  });
+}
+
 // Apparently, automatic reconnection is the default!
 const mongoClient = new mongo.MongoClient(process.env.GK_MONGO_SERVER, {
   maxPoolSize: 0,
@@ -114,7 +152,7 @@ connectionPromise.then(async () => {
     }
   });
 
-  client.on("message", async (topic, message) => {
+client.on("message", async (topic, message) => {
     console.log("Got a message from server", topic, message);
     let payload;
     try {
@@ -132,15 +170,42 @@ connectionPromise.then(async () => {
       });
       // Doesn't exist??
       if (!key) return;
-      const user = await db.collection("users").findOne({
-        id: {$eq: key.userId},
+      // Fetch user info from HTTP endpoint
+      let userData = {};
+      const endpoint = process.env.GK_HTTP_ENDPOINT;
+      const token = process.env.GK_SERVER_TOKEN;
+      if (endpoint && token) {
+        try {
+          userData = await fetchUser(endpoint, token, key.memberProjectsId);
+        } catch (err) {
+          console.error("User fetch failed:", err.message);
+        }
+      }
+      const user = userData?.user || {};
+      const username = user.uid || null;
+      const name = user.cn || null;
+
+      const dbUser = await db.collection("users").findOne({
+        id: {$eq: key.userId },
       });
-      if (!user) {
+      if (!dbUser) {
         console.log("No user found for key?", key);
         return;
       }
+      // Resolve door name
+      let doorName = null;
+      const doorDoc = await db.collection("doors").findOne({
+        $or: [
+          { _id: doorId },
+          ...(mongo.ObjectId.isValid(doorId)
+            ? [{ _id: new mongo.ObjectId(doorId) }]
+            : []),
+        ],
+      });
+      doorName = doorDoc?.name || null;
+      // Determine access
       let granted = undefined;
-      if (user.disabled) {
+      if (dbUser.disabled) {
         granted = false;
       }
       // This could be an `else if`, but this feels a little more consistent / cleaner
@@ -166,34 +231,47 @@ connectionPromise.then(async () => {
               $in: ["*", doorId],
             },
             groupId: {
-              $in: user.groups ? user.groups.concat("*") : ["*"],
+              $in: dbUser.groups ? dbUser.groups.concat("*") : ["*"],
             },
           },
-          {
+          { 
             sort: {
               priority: -1,
             },
           }
         );
         console.log(
-          `Found a group ticket for door=${doorId}/user=${user.id} pair!`,
+          `Found a group ticket for door=${doorId}/user=${dbUser.id} pair!`,
           groupTicket
         );
         granted = groupTicket?.granted;
       }
 
-      //local time
-      const now = new Date().toLocaleString()
+      //timestamps (DUHHH?)
+      const timestamp = new Date().toLocaleString("en-US", {
+        timeZone: "America/New_York",
+      });
 
-      // If there's no ticket for the user, assume they're not allowed (undefined)
+      // Structured log
+      console.log({
+        timestamp,
+        door: doorId,
+        doorName,
+        username,
+        name,
+        doorsId: payload.association,
+        keyId: key._id,
+        granted: !!granted,
+      });
+
       if (granted) {
         console.log(
-          `[${now}] Key ${key._id} (Door association: ${key.doorsId}) is unlocking ${doorId}!`
+          `[${timestamp}] ${name} (${username}) is unlocking ${doorName || doorId}`
         );
         client.publish(`gk/${doorId}/unlock`);
       } else {
         console.log(
-          `[${now}] Attempted unlock of ${doorId} by ${key._id} (Door association: ${key.doorsId})! Not allowed...`
+          `[${timestamp}] Attempted unlock of ${doorName || doorId} by ${name} (${username})! Not allowed...`
         );
       }
     } else if (topic.endsWith("/heartbeat")) {
