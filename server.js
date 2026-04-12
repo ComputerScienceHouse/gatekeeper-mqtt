@@ -17,6 +17,7 @@ import keys from "./routes/keys.js";
 import users from "./routes/users.js";
 import mobile from "./routes/mobile.js";
 
+//fetch user from the https endpoint
 async function fetchUser(endpoint, token, memberProjectsId) {
   const url = new URL(`${endpoint}/projects/by-key/${memberProjectsId}`);
   const res = await fetch(url, {
@@ -151,8 +152,9 @@ connectionPromise.then(async () => {
         doorsId: {$eq: payload.association},
         enabled: {$eq: true},
       });
+      // Doesn't exist??
       if (!key) return;
-
+      // Fetch user info from HTTP endpoint
       const endpoint = process.env.GK_HTTP_ENDPOINT;
       const token = process.env.GK_SERVER_TOKEN;
 
@@ -177,6 +179,7 @@ connectionPromise.then(async () => {
       const user = userData?.user || {};
       const username = user.uid || null;
       const name = user.cn || null;
+      // Resolve door name
       const doorName = doorDoc?.name || null;
 
       //timestamps (DUHHH?)

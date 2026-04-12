@@ -22,6 +22,7 @@ export function searchOne(base, filter, attributes) {
         if (err) {
           reject(err);
         } else {
+          // Don't leak memory:
           function onSearchEntry(entry) {
             resolve(entry);
             res.removeListener("end", onEnd);

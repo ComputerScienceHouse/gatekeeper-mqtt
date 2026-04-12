@@ -35,7 +35,8 @@ export async function syncUsers(db) {
   const cursor = await iterableSearch(
     "cn=users,cn=accounts,dc=csh,dc=rit,dc=edu",
     {
-      scope: "one",
+      // filter: "(uid)",
+      scope: "one", // one level under user DN (no need to recurse)
       paged: true,
       timeLimit: 60 * 30, // 30 minutes
       attributes: ["memberOf", "ipaUniqueID", "nsAccountLock"],
@@ -44,6 +45,9 @@ export async function syncUsers(db) {
   );
 
   const promises = [];
+  // Some day these should be batched...
+  // Maybe we could have a map of Group[] => User[] and use `updateMany`?
+  // This won't let us upsert, but that should be okay because enroll will fix it?
   for await (const user of cursor) {
     if (!user.attributes.find((attribute) => attribute.type == "ipaUniqueID")) {
       console.log("Missing attributes!", user);

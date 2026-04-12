@@ -46,6 +46,7 @@ router.get("/uuid-by-uid/:uid", async (req, res) => {
   console.log("uuid by uid:", req.params.uid);
   try {
     const user = await searchOne(USER_BASE, `(uid=${req.params.uid})`, USER_ATTRS);
+    // Ensure we're updated on DB-side
     const userDocument = await syncUser(req.ctx.db, user);
     console.log("Got user", userDocument);
 
