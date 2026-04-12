@@ -29,12 +29,13 @@ class AuthError extends Error {
 export async function validateToken(token, requiredScope = null) {
   const { issuer, JWKS } = await oidcPromise;
   const verifyOptions = { issuer };
-  if (clientId) verifyOptions.audience = clientId;
+  // if (clientId) verifyOptions.audience = clientId;
 
   let payload;
   try {
     ({ payload } = await jwtVerify(token, JWKS, verifyOptions));
   } catch (err) {
+    console.error("JWT verification failed:", err.message, { issuer: verifyOptions.issuer, audience: verifyOptions.audience });
     throw new AuthError("Invalid or expired token", 401);
   }
 
