@@ -1,61 +1,36 @@
-const express = require("express");
-const mqtt = require("mqtt");
-const mongo = require("mongodb");
-const bodyParser = require("body-parser");
-const morgan = require("morgan");
+import express from "express";
+import mqtt from "mqtt";
+import { MongoClient, ObjectId } from "mongodb";
+import bodyParser from "body-parser";
+import morgan from "morgan";
 
-const {doorHeartbeats} = require("./state");
-const {syncUsers} = require("./sync");
-
-const auth = require("./auth");
+import { doorHeartbeats } from "./state.js";
+import { syncUsers } from "./sync.js";
+import auth from "./auth.js";
+import { hybridAuth } from "./middleware/hybridAuth.js";
+import { checkAccess } from "./access.js";
 
 // API routes
-const memberProjects = require("./routes/memberProjects");
-const doors = require("./routes/doors");
-const keys = require("./routes/keys");
-const users = require("./routes/users");
-const mobile = require("./routes/mobile");
+import memberProjects from "./routes/memberProjects.js";
+import doors from "./routes/doors.js";
+import keys from "./routes/keys.js";
+import users from "./routes/users.js";
+import mobile from "./routes/mobile.js";
 
-const https = require("https");
 //fetch user from the https endpoint
-function fetchUser(endpoint, token, memberProjectsId) {
-  return new Promise((resolve, reject) => {
-    const url = new URL(`${endpoint}/projects/by-key/${memberProjectsId}`);
-
-    const req = https.request(
-      url,
-      {
-        method: "GET",
-        headers: {
-          Authorization: token,
-        },
-      },
-      (res) => {
-        let data = "";
-
-        res.on("data", (chunk) => (data += chunk));
-
-        res.on("end", () => {
-          if (res.statusCode === 200) {
-            try {
-              resolve(JSON.parse(data));
-            } catch {
-              reject(new Error("Invalid JSON response"));
-            }
-          } else {
-            reject(new Error(`HTTP ${res.statusCode}`));
-          }
-        });
-      }
-    );
-
-    req.on("error", reject);
-    req.end();
+async function fetchUser(endpoint, token, memberProjectsId) {
+  const url = new URL(`${endpoint}/projects/by-key/${memberProjectsId}`);
+  const res = await fetch(url, {
+    headers: { Authorization: token },
   });
+  if (!res.ok) {
+    throw new Error(`HTTP ${res.status}`);
+  }
+  return res.json();
 }
 
 // Apparently, automatic reconnection is the default!
-const mongoClient = new mongo.MongoClient(process.env.GK_MONGO_SERVER, {
+const mongoClient = new MongoClient(process.env.GK_MONGO_SERVER, {
   maxPoolSize: 0,
   minPoolSize: 0,
 });
@@ -64,10 +39,12 @@ connectionPromise.then(async () => {
   console.log("DB Connection opened!");
   const db = mongoClient.db("gatekeeper");
 
-  await db.collection("users").createIndex("id", {unique: true});
-  await db.collection("keys").createIndex("doorsId", {unique: true});
-  await db.collection("keys").createIndex("drinkId", {unique: true});
-  await db.collection("keys").createIndex("memberProjectsId", {unique: true});
+  await Promise.all([
+    db.collection("users").createIndex("id", {unique: true}),
+    db.collection("keys").createIndex("doorsId", {unique: true}),
+    db.collection("keys").createIndex("drinkId", {unique: true}),
+    db.collection("keys").createIndex("memberProjectsId", {unique: true}),
+  ]);
 
   async function scheduledTasks() {
     console.log("Scheduled task time!");
@@ -142,7 +119,7 @@ connectionPromise.then(async () => {
     },
     memberProjects
   );
-  app.use("/doors", auth("admin"), doors);
+  app.use("/doors", hybridAuth("admin"), doors);
   app.use("/admin/keys", auth("admin"), keys);
   app.use("/admin/users", auth("admin"), users);
   app.use("/mobile", mobile);
@@ -159,7 +136,7 @@ connectionPromise.then(async () => {
     }
   });
 
-client.on("message", async (topic, message) => {
+  client.on("message", async (topic, message) => {
     console.log("Got a message from server", topic, message);
     let payload;
     try {
@@ -178,81 +155,32 @@ client.on("message", async (topic, message) => {
       // Doesn't exist??
       if (!key) return;
       // Fetch user info from HTTP endpoint
-      let userData = {};
       const endpoint = process.env.GK_HTTP_ENDPOINT;
       const token = process.env.GK_SERVER_TOKEN;
-      if (endpoint && token) {
-        try {
-          userData = await fetchUser(endpoint, token, key.memberProjectsId);
-        } catch (err) {
-          console.error("User fetch failed:", err.message);
-        }
-      }
+
+      const [userData, doorDoc, granted] = await Promise.all([
+        endpoint && token
+          ? fetchUser(endpoint, token, key.memberProjectsId).catch((err) => {
+              console.error("User fetch failed:", err.message);
+              return {};
+            })
+          : Promise.resolve({}),
+        db.collection("doors").findOne({
+          $or: [
+            { _id: doorId },
+            ...(ObjectId.isValid(doorId)
+              ? [{ _id: new ObjectId(doorId) }]
+              : []),
+          ],
+        }),
+        checkAccess(db, key.userId, doorId),
+      ]);
+
       const user = userData?.user || {};
       const username = user.uid || null;
       const name = user.cn || null;
-
-      const dbUser = await db.collection("users").findOne({
-        id: {$eq: key.userId },
-      });
-      if (!dbUser) {
-        console.log("No user found for key?", key);
-        return;
-      }
       // Resolve door name
-      let doorName = null;
-      const doorDoc = await db.collection("doors").findOne({
-        $or: [
-          { _id: doorId },
-          ...(mongo.ObjectId.isValid(doorId)
-            ? [{ _id: new mongo.ObjectId(doorId) }]
-            : []),
-        ],
-      });
-      doorName = doorDoc?.name || null;
-      // Determine access
-      let granted = undefined;
-      if (dbUser.disabled) {
-        granted = false;
-      }
-      // This could be an `else if`, but this feels a little more consistent / cleaner
-      if (granted === undefined) {
-        const userTicket = await db.collection("userTickets").findOne(
-          {
-            userId: {$in: [key.userId, "*"]},
-            doorId: {$in: [doorId, "*"]},
-          },
-          {
-            sort: {
-              priority: -1,
-            },
-          }
-        );
-        console.log(userTicket);
-        granted = userTicket?.granted;
-      }
-      if (granted === undefined) {
-        const groupTicket = await db.collection("groupTickets").findOne(
-          {
-            doorId: {
-              $in: ["*", doorId],
-            },
-            groupId: {
-              $in: dbUser.groups ? dbUser.groups.concat("*") : ["*"],
-            },
-          },
-          { 
-            sort: {
-              priority: -1,
-            },
-          }
-        );
-        console.log(
-          `Found a group ticket for door=${doorId}/user=${dbUser.id} pair!`,
-          groupTicket
-        );
-        granted = groupTicket?.granted;
-      }
+      const doorName = doorDoc?.name || null;
 
       //timestamps (DUHHH?)
       const timestamp = new Date().toLocaleString("en-US", {

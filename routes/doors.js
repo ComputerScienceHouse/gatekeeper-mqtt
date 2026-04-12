@@ -1,5 +1,8 @@
-const router = require("express").Router();
-const {doorHeartbeats} = require("../state.js");
+import { Router } from "express";
+import { doorHeartbeats } from "../state.js";
+import { checkAccess } from "../access.js";
+
+const router = Router();
 
 router.get("/:doorId/status", (req, res) => {
   // If it's been more than 1 minute, we assume something is broken...
@@ -32,8 +35,18 @@ router.get("/", async (req, res) => {
 });
 
 router.post("/:doorId/unlock", async (req, res) => {
+  if (req.ctx.authMethod === "oidc") {
+    const granted = await checkAccess(
+      req.ctx.db,
+      req.ctx.userId,
+      req.params.doorId
+    );
+    if (!granted) {
+      return res.status(403).json({ message: "Access denied" });
+    }
+  }
   req.ctx.mqtt.publish(`gk/${req.params.doorId}/unlock`, "");
   res.status(204).send(null);
 });
 
-module.exports = router;
+export default router;

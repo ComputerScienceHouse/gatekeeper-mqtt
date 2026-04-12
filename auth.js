@@ -1,7 +1,7 @@
 const realms = {
-  admin: new Set(process.env.GK_ADMIN_SECRETS.split(",")),
-  drink: new Set(process.env.GK_DRINK_SECRETS.split(",")),
-  projects: new Set(process.env.GK_MEMBER_PROJECT_SECRETS.split(",")),
+  admin: new Set((process.env.GK_ADMIN_SECRETS || "").split(",")),
+  drink: new Set((process.env.GK_DRINK_SECRETS || "").split(",")),
+  projects: new Set((process.env.GK_MEMBER_PROJECT_SECRETS || "").split(",")),
 };
 
 function generateMiddleware(realm) {
@@ -28,4 +28,8 @@ function generateMiddleware(realm) {
   return authMiddleware;
 }
 
-module.exports = generateMiddleware;
+export function checkSecret(realm, value) {
+  return realms[realm]?.has(value) ?? false;
+}
+
+export default generateMiddleware;
