@@ -1,6 +1,6 @@
-const ldap = require("./ldap");
+import * as ldap from "./ldap.js";
 
-function iterableSearch(base, options) {
+export function iterableSearch(base, options) {
   return new Promise((resolve, reject) => {
     ldap.client.search(base, options, (err, res) => {
       if (err) {
@@ -46,9 +46,7 @@ function iterableSearch(base, options) {
               while (entries.length) {
                 const entriesClone = entries;
                 entries = [];
-                // console.log(`Pumping ${entriesClone.length} entries!`);
                 yield* entriesClone;
-                // console.log("Pumped!");
               }
               if (!foundEnd) {
                 // Waits for next chunk to be dispatched from the system
@@ -72,6 +70,3 @@ function iterableSearch(base, options) {
     });
   });
 }
-module.exports = {
-  iterableSearch,
-};

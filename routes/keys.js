@@ -1,7 +1,8 @@
-const router = require("express").Router();
-const crypto = require("crypto");
+import { Router } from "express";
+import crypto from "crypto";
+import { REALM_NAMES } from "../constants.js";
 
-const REALM_NAMES = ["doors", "drink", "memberProjects"];
+const router = Router();
 
 // First, PUT /keys with details of user key is for
 // Receive a keyId back which is our association
@@ -119,4 +120,4 @@ router.delete("/:keyId", async (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;

@@ -1,36 +1,9 @@
-const router = require("express").Router();
-const ldap = require("../ldap");
+import { Router } from "express";
+import { searchOne } from "../ldap.js";
 
-function findUser(id) {
-  return new Promise((resolve, reject) => {
-    ldap.client.search(
-      "cn=users,cn=accounts,dc=csh,dc=rit,dc=edu",
-      {
-        filter: `(ipaUniqueID=${id})`,
-        scope: "one",
-        paged: false,
-        sizeLimit: 1,
-      },
-      (err, res) => {
-        if (err) {
-          reject(err);
-        } else {
-          // Don't leak memory:
-          function onSearchEntry(entry) {
-            resolve(entry);
-            res.removeListener("end", onEnd);
-          }
-          function onEnd() {
-            res.removeListener("searchEntry", onSearchEntry);
-            reject(new Error("User not found!"));
-          }
-          res.once("searchEntry", onSearchEntry);
-          res.once("end", onEnd);
-        }
-      }
-    );
-  });
-}
+const router = Router();
+
+const USER_BASE = "cn=users,cn=accounts,dc=csh,dc=rit,dc=edu";
 
 const ARRAYS = new Set([
   "memberOf",
@@ -39,6 +12,7 @@ const ARRAYS = new Set([
   "ipaSshPubKey",
   "ibutton",
 ]);
+
 router.get("/by-key/:associationId", async (req, res) => {
   const key = await req.ctx.db.collection("keys").findOne({
     [req.associationType]: {$eq: req.params.associationId},
@@ -60,7 +34,7 @@ router.get("/by-key/:associationId", async (req, res) => {
 
   let user;
   try {
-    user = await findUser(key.userId);
+    user = await searchOne(USER_BASE, `(ipaUniqueID=${key.userId})`);
   } catch (err) {
     res.status(500).json({message: "Internal server error"});
     return;
@@ -88,4 +62,4 @@ router.get("/by-key/:associationId", async (req, res) => {
   });
 });
 
-module.exports = router;
+export default router;
