@@ -49,6 +49,7 @@ export function iterableSearch(base, options) {
                 // console.log(`Pumping ${entriesClone.length} entries!`);
                 yield* entriesClone;
                 // console.log("Pumped!");
+              }
               if (!foundEnd) {
                 // Waits for next chunk to be dispatched from the system
                 await new Promise((resolve, reject) => {
