@@ -21,16 +21,17 @@ router.get("/:doorId/status", (req, res) => {
 });
 
 router.get("/", async (req, res) => {
-  const doors = await req.ctx.db.collection("doors").find({});
-  const entries = [];
-  for await (const door of doors) {
-    entries.push({
+  const doors = await req.ctx.db.collection("doors").find({}).toArray();
+  const accessResults = req.ctx.authMethod === "oidc"
+    ? await Promise.all(doors.map((d) => checkAccess(req.ctx.db, req.ctx.userId, String(d._id))))
+    : doors.map(() => true);
+
+  res.json({
+    doors: doors.map((door, i) => ({
       id: door._id,
       name: door.name,
-    });
-  }
-  res.json({
-    doors: entries,
+      access: accessResults[i] === true,
+    })),
   });
 });
 
