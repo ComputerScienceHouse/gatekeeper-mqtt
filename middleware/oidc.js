@@ -2,7 +2,7 @@ import { discovery } from "openid-client";
 import { createRemoteJWKSet, jwtVerify } from "jose";
 
 const REQUIRED_SCOPE = "gatekeeper_provision";
-const USER_ID_CLAIM = "ipaUniqueID";
+const USER_ID_CLAIM = "uuid";
 
 const issuerUrl = new URL(
   process.env.GK_OIDC_ISSUER || "https://sso.csh.rit.edu/auth/realms/csh"
