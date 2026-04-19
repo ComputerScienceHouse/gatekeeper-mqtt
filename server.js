@@ -44,6 +44,7 @@ connectionPromise.then(async () => {
     db.collection("keys").createIndex("doorsId", {unique: true}),
     db.collection("keys").createIndex("drinkId", {unique: true}),
     db.collection("keys").createIndex("memberProjectsId", {unique: true}),
+    db.collection("accessLogs").createIndex({ timestamp: -1 }),
   ]);
 
   async function scheduledTasks() {
@@ -183,12 +184,10 @@ connectionPromise.then(async () => {
       const doorName = doorDoc?.name || null;
 
       //timestamps (DUHHH?)
-      const timestamp = new Date().toLocaleString("en-US", {
-        timeZone: "America/New_York",
-      });
+      const timestamp = new Date();
 
       // Structured log
-      console.log({
+      const logEntry = {
         timestamp,
         door: doorId,
         doorName,
@@ -197,7 +196,13 @@ connectionPromise.then(async () => {
         doorsId: payload.association,
         keyId: key._id,
         granted: !!granted,
+      };
+
+      console.log(logEntry);
+      db.collection("accessLogs").insertOne(logEntry).catch((err) => {
+        console.error("Failed to insert into DB", err);
       });
+
 
       if (granted) {
         console.log(
