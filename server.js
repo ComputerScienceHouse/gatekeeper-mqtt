@@ -16,6 +16,7 @@ import doors from "./routes/doors.js";
 import keys from "./routes/keys.js";
 import users from "./routes/users.js";
 import mobile from "./routes/mobile.js";
+import logs from "./routes/logs.js";
 
 //fetch user from the https endpoint
 async function fetchUser(endpoint, token, memberProjectsId) {
@@ -123,6 +124,7 @@ connectionPromise.then(async () => {
   app.use("/doors", hybridAuth("admin"), doors);
   app.use("/admin/keys", auth("admin"), keys);
   app.use("/admin/users", auth("admin"), users);
+  app.use("/admin/logs", hybridAuth("admin"), logs);
   app.use("/mobile", mobile);
 
   client.on("connect", async () => {
