@@ -190,6 +190,9 @@ connectionPromise.then(async () => {
       const logEntry = {
         timestamp,
         door: doorId,
+        doorName,
+        username,
+        name,
         doorsId: payload.association,
         keyId: key._id,
         granted: !!granted,
