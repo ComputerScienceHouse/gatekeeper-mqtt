@@ -9,6 +9,7 @@ import { syncUsers } from "./sync.js";
 import auth from "./auth.js";
 import { hybridAuth } from "./middleware/hybridAuth.js";
 import { checkAccess } from "./access.js";
+import { requireGroup } from "./middleware/oidc.js";
 
 // API routes
 import memberProjects from "./routes/memberProjects.js";
@@ -122,9 +123,9 @@ connectionPromise.then(async () => {
     memberProjects
   );
   app.use("/doors", hybridAuth("admin"), doors);
-  app.use("/admin/keys", hybridAuth("admin"), keys);
-  app.use("/admin/users", hybridAuth("admin"), users);
-  app.use("/admin/logs", hybridAuth("admin"), logs);
+  app.use("/admin/keys", hybridAuth("admin"), requireGroup("rtp"), keys);
+  app.use("/admin/users", hybridAuth("admin"), requireGroup("rtp"), users);
+  app.use("/admin/logs", hybridAuth("admin"), requireGroup("rtp"), logs);
   app.use("/mobile", mobile);
 
   client.on("connect", async () => {
