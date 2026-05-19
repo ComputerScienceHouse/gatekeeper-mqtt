@@ -9,7 +9,7 @@ import { syncUsers } from "./sync.js";
 import auth from "./auth.js";
 import { hybridAuth } from "./middleware/hybridAuth.js";
 import { checkAccess } from "./access.js";
-import { requireGroup } from "./oidc.js";
+import { requireGroup } from "./middleware/oidc.js";
 
 // API routes
 import memberProjects from "./routes/memberProjects.js";
