@@ -1,6 +1,7 @@
-FROM docker.io/node:22
+FROM docker.io/node:26
 
-RUN npm i -g pnpm
+RUN npm i -g corepack
+RUN corepack enable
 
 COPY package.json /app/package.json
 COPY pnpm-lock.yaml /app/pnpm-lock.yaml

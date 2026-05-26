@@ -1,7 +1,8 @@
 import { discovery } from "openid-client";
 import { createRemoteJWKSet, jwtVerify } from "jose";
 
-export const REQUIRED_SCOPE = "gatekeeper_provision";
+export const PROVISION_SCOPE = "gatekeeper_provision";
+export const USER_SCOPE = "gatekeeper_user";
 const USER_ID_CLAIM = "uuid";
 
 const issuerUrl = new URL(
@@ -58,18 +59,20 @@ export async function validateToken(token, requiredScope = null) {
   return { userId, groups };
 }
 
-export async function oidcAuth(req, res, next) {
+export function oidcAuth(scope) {
+return async function oidcAuth(req, res, next) {
   const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith("Bearer ")) {
     return res.status(401).json({ message: "Bearer token required" });
   }
   try {
-    const { userId } = await validateToken(authHeader.slice(7), REQUIRED_SCOPE);
+    const { userId } = await validateToken(authHeader.slice(7), scope);
     req.ctx.userId = userId;
     next();
   } catch (err) {
     return res.status(err.status || 401).json({ message: err.message });
   }
+}
 }
 
 export function requireGroup(group) {

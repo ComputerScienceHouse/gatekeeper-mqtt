@@ -1,11 +1,11 @@
 import { Router } from "express";
 import crypto from "crypto";
-import { oidcAuth } from "../middleware/oidc.js";
+import { oidcAuth, PROVISION_SCOPE } from "../middleware/oidc.js";
 import { REALM_NAMES } from "../constants.js";
 
 const router = Router();
 
-router.use(oidcAuth);
+router.use(oidcAuth(PROVISION_SCOPE));
 
 router.get("/provision", async (req, res) => {
   const stem = { userId: req.ctx.userId, mobile: true };
