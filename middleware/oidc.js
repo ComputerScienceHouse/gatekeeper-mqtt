@@ -1,7 +1,7 @@
 import { discovery } from "openid-client";
 import { createRemoteJWKSet, jwtVerify } from "jose";
 
-const REQUIRED_SCOPE = "gatekeeper_provision";
+export const REQUIRED_SCOPE = "gatekeeper_provision";
 const USER_ID_CLAIM = "uuid";
 
 const issuerUrl = new URL(
