@@ -1,5 +1,8 @@
 FROM docker.io/node:26
 
+RUN mkdir /corepack && chmod a+rx /corepack
+ENV COREPACK_HOME=/corepack
+
 RUN npm i -g corepack
 RUN corepack enable
 
