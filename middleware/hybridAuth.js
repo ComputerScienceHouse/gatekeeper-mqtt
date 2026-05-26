@@ -1,4 +1,4 @@
-import { validateToken, REQUIRED_SCOPE } from "./oidc.js";
+import { validateToken } from "./oidc.js";
 import { checkSecret } from "../auth.js";
 
 export function hybridAuth(realm) {
@@ -10,9 +10,7 @@ export function hybridAuth(realm) {
 
     if (authHeader.startsWith("Bearer ")) {
       try {
-        const { userId, groups } = await validateToken(authHeader.slice(7), REQUIRED_SCOPE);
-        req.ctx.userId = userId;
-        req.ctx.groups = groups;
+        req.ctx.userId = await validateToken(authHeader.slice(7));
         req.ctx.authMethod = "oidc";
         next();
       } catch (err) {

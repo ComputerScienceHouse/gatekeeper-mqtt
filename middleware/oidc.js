@@ -54,8 +54,7 @@ export async function validateToken(token, requiredScope = null) {
     throw new AuthError(`Token missing required claim: ${USER_ID_CLAIM}`, 403);
   }
 
-  const groups = payload.groups ?? [];
-  return { userId, groups };
+  return userId;
 }
 
 export async function oidcAuth(req, res, next) {
@@ -64,23 +63,9 @@ export async function oidcAuth(req, res, next) {
     return res.status(401).json({ message: "Bearer token required" });
   }
   try {
-    const { userId } = await validateToken(authHeader.slice(7), REQUIRED_SCOPE);
-    req.ctx.userId = userId;
+    req.ctx.userId = await validateToken(authHeader.slice(7), REQUIRED_SCOPE);
     next();
   } catch (err) {
     return res.status(err.status || 401).json({ message: err.message });
   }
-}
-
-export function requireGroup(group) {
-  return function (req, res, next) {
-    if (req.ctx.authMethod === "secret") {
-      return next();
-    }
-    const groups = req.ctx.groups ?? [];
-    if (!groups.includes(group)) {
-      return res.status(403).json({ message: "Unauthorized!" });
-    }
-    next();
-  };
 }
