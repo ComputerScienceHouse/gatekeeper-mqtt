@@ -14,6 +14,8 @@
    Fetch user groups
 *** PATCH /admin/users/:id
    Modify user data
+*** GET /admin/users/uuid-by-uid/:uid
+   Fetch user UUID by CSH username
 ** /admin/keys
 *** PUT /admin/keys
    Add a key for a user
@@ -23,6 +25,9 @@
    Delete all keys attached to a user
 *** DELETE /admin/keys/:keyId
    Delete a key
+** /admin/logs
+*** GET /admin/logs
+   Fetch paginated access logs
 * /projects
 ** GET /projects/by-key/:keyId
    Fetches user details from LDAP attached to the key with the given ID (from the member project realm)
