@@ -4,6 +4,15 @@
 
   const router = Router();
 
+  router.post("/access", async (req, res) => {
+      const { reason } = req.body;
+      if (typeof reason != "string" || !reason.trim()) {
+          return res.status(422).json({ message: "Missing reason field" });
+      }
+      console.log(`access: ${req.ctx.username} viewed keys || reason: ${reason}`);
+      res.status(204).send(null);
+  });
+
   router.get("/by-user", async (req, res) => {
     if (typeof req.query.userId != "string") {
       return res.status(422).json({ message: "Missing 'userId' query param" });
@@ -61,6 +70,9 @@
         updates[key] = req.body[key];
       }
     }
+
+    const owner = req.body.username ?? "not found";
+    console.log(`access: ${req.ctx.username} updated ${owner}'s key ${req.params.id}`);
     await req.ctx.db.collection("keys").updateOne(
       {
         _id: {$eq: req.params.id},
@@ -116,10 +128,13 @@
   });
 
   router.delete("/:keyId", async (req, res) => {
+    const owner = req.body?.username ?? "unknown";
+
     const results = await req.ctx.db.collection("keys").deleteOne({
       _id: {$eq: req.params.keyId},
     });
     if (results.deletedCount) {
+      console.log(`keys: ${req.ctx.username} deleted ${owner}'s key ${req.params.keyId}`);
       return res.status(204).send(null);
     } else {
       return res.status(404).json({

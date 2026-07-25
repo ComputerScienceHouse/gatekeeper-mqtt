@@ -56,7 +56,8 @@ export async function validateToken(token, requiredScope = null) {
   }
 
   const groups = payload.groups ?? [];
-  return { userId, groups };
+  const username = payload.preferred_username
+  return { userId, groups, username };
 }
 
 export function oidcAuth(scope) {
