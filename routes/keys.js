@@ -1,6 +1,7 @@
   import { Router } from "express";
   import crypto from "crypto";
   import { REALM_NAMES } from "../constants.js";
+  import { recordAudit } from "../access.js";
 
   const router = Router();
 
@@ -10,6 +11,12 @@
           return res.status(422).json({ message: "Missing reason field" });
       }
       console.log(`access: ${req.ctx.username} viewed keys || reason: ${reason}`);
+      await recordAudit(req.ctx.db, {
+        username: req.ctx.username,
+        name: req.ctx.name,
+        action: "Viewed Keys",
+        reason,
+      });
       res.status(204).send(null);
   });
 
@@ -81,6 +88,13 @@
         $set: updates,
       }
     );
+    const change = updates.enabled === false ? "Disabled" : updates.enabled === true ? "Enabled" : "updated";
+    await recordAudit(req.ctx.db, {
+      username: req.ctx.username,
+      name: req.ctx.name,
+      action: "Updated Keys",
+      reason: `${change} ${owner}'s key ${req.params.id}`,
+  });
     res.status(204).send(null);
   });
 
@@ -135,6 +149,12 @@
     });
     if (results.deletedCount) {
       console.log(`keys: ${req.ctx.username} deleted ${owner}'s key ${req.params.keyId}`);
+      await recordAudit(req.ctx.db,{
+        username: req.ctx.username,
+        name: req.ctx.name,
+        action: "Deleted Keys",
+        reason: `deleted ${owner}'s key ${req.params.keyId}`,
+      });
       return res.status(204).send(null);
     } else {
       return res.status(404).json({

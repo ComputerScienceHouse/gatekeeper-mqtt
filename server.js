@@ -19,6 +19,7 @@ import keys from "./routes/keys.js";
 import users from "./routes/users.js";
 import mobile from "./routes/mobile.js";
 import logs from "./routes/logs.js";
+import audit from "./routes/audit.js";
 
 //fetch user from the https endpoint
 async function fetchUser(endpoint, token, memberProjectsId) {
@@ -127,6 +128,7 @@ connectionPromise.then(async () => {
   app.use("/admin/keys", hybridAuth("admin"), requireGroup("rtp"), keys);
   app.use("/admin/users", hybridAuth("admin"), requireGroup("rtp"), users);
   app.use("/admin/logs", hybridAuth("admin"), requireGroup("rtp"), logs);
+  app.use("/admin/audit", hybridAuth("admin"), requireGroup("rtp"), audit);
   app.use("/mobile", mobile);
 
   client.on("connect", async () => {
@@ -199,6 +201,7 @@ connectionPromise.then(async () => {
         name,
         doorsId: payload.association,
         keyId: key._id,
+        uid: key.uid ?? null,
         granted: !!granted,
       };
 
