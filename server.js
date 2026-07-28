@@ -49,6 +49,7 @@ connectionPromise.then(async () => {
     db.collection("keys").createIndex("drinkId", {unique: true}),
     db.collection("keys").createIndex("memberProjectsId", {unique: true}),
     db.collection("accessLogs").createIndex({ timestamp: -1 }),
+    db.collection("accessLogs").createIndex({ timestamp: 1 }, { expireAfterSeconds: 15778476 }),
   ]);
 
   async function scheduledTasks() {
