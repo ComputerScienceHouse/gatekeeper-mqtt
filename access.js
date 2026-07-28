@@ -21,3 +21,9 @@ export async function checkAccess(db, userId, doorId) {
   );
   return groupTicket?.granted;
 }
+
+export async function recordAudit(db, entry) {
+  db.collection("auditLogs").insertOne({ ...entry, timestamp: new Date() }).catch((err) => {
+    console.error("Failed to write audit entry", err);
+  });
+}

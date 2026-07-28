@@ -17,17 +17,30 @@
 *** GET /admin/users/uuid-by-uid/:uid
    Fetch user UUID by CSH username
 ** /admin/keys
+*** POST /admin/keys/access
+   State a reason to view keys
+*** GET /admin/keys/by-user
+   Fetch keys attached to a user
 *** PUT /admin/keys
    Add a key for a user
 *** PATCH /admin/keys/:id
    Update a key
+*** GET /admin/keys/by-association/:id
+   Fetch key by ID
 *** DELETE /admin/keys/by-user
    Delete all keys attached to a user
 *** DELETE /admin/keys/:keyId
    Delete a key
 ** /admin/logs
+*** POST /admin/logs/access
+   State a reason to view logs
 *** GET /admin/logs
    Fetch paginated access logs
+*** GET /admin/logs/doors
+   List distinct doors that appear in access logs
+** /admin/audit
+*** GET /admin/audit
+   Fetch paginated audit logs
 * /projects
 ** GET /projects/by-key/:keyId
    Fetches user details from LDAP attached to the key with the given ID (from the member project realm)

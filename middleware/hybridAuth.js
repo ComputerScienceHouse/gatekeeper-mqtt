@@ -10,9 +10,11 @@ export function hybridAuth(realm) {
 
     if (authHeader.startsWith("Bearer ")) {
       try {
-        const { userId, groups } = await validateToken(authHeader.slice(7), USER_SCOPE);
+        const { userId, groups, username, name } = await validateToken(authHeader.slice(7), USER_SCOPE);
         req.ctx.userId = userId;
         req.ctx.groups = groups;
+        req.ctx.username = username;
+        req.ctx.name = name;
         req.ctx.authMethod = "oidc";
         next();
       } catch (err) {

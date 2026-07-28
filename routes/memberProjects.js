@@ -16,6 +16,7 @@ const ARRAYS = new Set([
 router.get("/by-key/:associationId", async (req, res) => {
   const key = await req.ctx.db.collection("keys").findOne({
     [req.associationType]: {$eq: req.params.associationId},
+    enabled: { $eq: true },
   });
 
   if (!key) {

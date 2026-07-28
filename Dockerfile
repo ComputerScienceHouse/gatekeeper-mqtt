@@ -12,4 +12,4 @@ WORKDIR /app
 RUN pnpm i --production=true --no-optional
 
 COPY . /app
-CMD pnpm run kube
+CMD ["pnpm", "run", "kube"]

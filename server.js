@@ -19,6 +19,7 @@ import keys from "./routes/keys.js";
 import users from "./routes/users.js";
 import mobile from "./routes/mobile.js";
 import logs from "./routes/logs.js";
+import audit from "./routes/audit.js";
 
 //fetch user from the https endpoint
 async function fetchUser(endpoint, token, memberProjectsId) {
@@ -48,6 +49,7 @@ connectionPromise.then(async () => {
     db.collection("keys").createIndex("drinkId", {unique: true}),
     db.collection("keys").createIndex("memberProjectsId", {unique: true}),
     db.collection("accessLogs").createIndex({ timestamp: -1 }),
+    db.collection("accessLogs").createIndex({ timestamp: 1 }, { expireAfterSeconds: 15778476 }),
   ]);
 
   async function scheduledTasks() {
@@ -90,7 +92,7 @@ connectionPromise.then(async () => {
   );
   app.use((req, res, next) => {
     res.setHeader("Access-Control-Allow-Origin", "*");
-    res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+    res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS, PATCH");
     res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
     if (req.method === "OPTIONS") return res.sendStatus(204);
     next();
@@ -127,6 +129,7 @@ connectionPromise.then(async () => {
   app.use("/admin/keys", hybridAuth("admin"), requireGroup("rtp"), keys);
   app.use("/admin/users", hybridAuth("admin"), requireGroup("rtp"), users);
   app.use("/admin/logs", hybridAuth("admin"), requireGroup("rtp"), logs);
+  app.use("/admin/audit", hybridAuth("admin"), requireGroup("rtp"), audit);
   app.use("/mobile", mobile);
 
   client.on("connect", async () => {
@@ -199,6 +202,7 @@ connectionPromise.then(async () => {
         name,
         doorsId: payload.association,
         keyId: key._id,
+        uid: key.uid ?? null,
         granted: !!granted,
       };
 
