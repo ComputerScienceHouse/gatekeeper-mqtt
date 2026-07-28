@@ -4,20 +4,24 @@ import { checkAccess } from "../access.js";
 
 const router = Router();
 
-router.get("/:doorId/status", (req, res) => {
+function getDoorStatus(doorId){
   // If it's been more than 1 minute, we assume something is broken...
-  const lastHeartbeat = doorHeartbeats.get(req.params.doorId);
+  const lastHeartbeat = doorHeartbeats.get(doorId);
   if (lastHeartbeat) {
-    res.json({
+    return {
       guess: Date.now() - lastHeartbeat > 1000 * 60 ? "offline" : "online",
       lastHeartbeat,
-    });
+    };
   } else {
-    res.json({
+    return {
       guess: "offline",
       lastHeartbeat: 0,
-    });
+    };
   }
+}
+
+router.get("/:doorId/status", (req, res) => {
+  res.json(getDoorStatus(req.params.doorId));
 });
 
 router.get("/", async (req, res) => {
@@ -46,6 +50,11 @@ router.post("/:doorId/unlock", async (req, res) => {
       return res.status(403).json({ message: "Access denied" });
     }
   }
+
+  if (getDoorStatus(req.params.doorId).guess === "offline") {
+    return res.status(409).json({ message: "Door is offline" });
+  }
+
   req.ctx.mqtt.publish(`gk/${req.params.doorId}/unlock`, "");
   res.status(204).send(null);
 });
