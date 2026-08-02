@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { doorHeartbeats } from "../state.js";
-import { checkAccess } from "../access.js";
+import { checkAccess, recordDoorUnlock } from "../access.js";
+import { ObjectId } from "mongodb";
 
 const router = Router();
 
@@ -53,6 +54,23 @@ router.post("/:doorId/unlock", async (req, res) => {
 
   if (getDoorStatus(req.params.doorId).guess === "offline") {
     return res.status(409).json({ message: "Door is offline" });
+  }
+
+  if (req.ctx.authMethod === "oidc") {
+    const doorId = req.params.doorId;
+    const doorDoc = await req.ctx.db.collection("doors").findOne({
+      $or: [
+        { _id: doorId },
+        ...(ObjectId.isValid(doorId) ? [{ _id: new ObjectId(doorId) }] : []),
+      ],
+    });
+
+    await recordDoorUnlock(req.ctx.db, {
+      doorId: req.params.doorId,
+      doorName: doorDoc?.name,
+      username: req.ctx.username ?? req.ctx.userId,
+      name: req.ctx.name,
+    });
   }
 
   req.ctx.mqtt.publish(`gk/${req.params.doorId}/unlock`, "");

@@ -1,36 +1,36 @@
-  import { Router } from "express";
-  import crypto from "crypto";
-  import { REALM_NAMES } from "../constants.js";
-  import { recordAudit } from "../access.js";
+import { Router } from "express";
+import crypto from "crypto";
+import { REALM_NAMES } from "../constants.js";
+import { recordAudit } from "../access.js";
 
-  const router = Router();
+const router = Router();
 
-  router.post("/access", async (req, res) => {
-      const { reason } = req.body;
-      if (typeof reason != "string" || !reason.trim()) {
-          return res.status(422).json({ message: "Missing reason field" });
-      }
-      console.log(`access: ${req.ctx.username} viewed keys || reason: ${reason}`);
-      await recordAudit(req.ctx.db, {
-        username: req.ctx.username,
-        name: req.ctx.name,
-        action: "Viewed Keys",
-        reason,
-      });
-      res.status(204).send(null);
-  });
-
-  router.get("/by-user", async (req, res) => {
-    if (typeof req.query.userId != "string") {
-      return res.status(422).json({ message: "Missing 'userId' query param" });
+router.post("/access", async (req, res) => {
+    const { reason } = req.body;
+    if (typeof reason != "string" || !reason.trim()) {
+        return res.status(422).json({ message: "Missing reason field" });
     }
-    const keys = await req.ctx.db.collection("keys").find({ userId: req.query.userId }).toArray();
-    res.json(keys);
-  });
+    console.log(`access: ${req.ctx.username} viewed keys || reason: ${reason}`);
+    await recordAudit(req.ctx.db, {
+      username: req.ctx.username,
+      name: req.ctx.name,
+      action: "Viewed Keys",
+      reason,
+    });
+    res.status(204).send(null);
+});
 
-  // First, PUT /keys with details of user key is for
-  // Receive a keyId back which is our association
-  // Register key using association and send back the now-randomised UID
+router.get("/by-user", async (req, res) => {
+  if (typeof req.query.userId != "string") {
+    return res.status(422).json({ message: "Missing 'userId' query param" });
+  }
+  const keys = await req.ctx.db.collection("keys").find({ userId: req.query.userId }).toArray();
+  res.json(keys);
+});
+
+// First, PUT /keys with details of user key is for
+// Receive a keyId back which is our association
+// Register key using association and send back the now-randomised UID
   // with PATCH /keys/:id
 
   router.put("/", async (req, res) => {
