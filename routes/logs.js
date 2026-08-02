@@ -1,7 +1,41 @@
 import { Router } from "express";
-import { recordAudit } from "../access.js";
+import { recordAudit } from "./audit.js";
 
 const router = Router();
+
+export async function recordDoorUnlock(
+  db,
+  {
+    doorId,
+    doorName,
+    username,
+    name,
+    accessType,
+    doorsId = null,
+    keyId = null,
+    uid = null,
+    granted = true,
+  },
+) {
+  return db
+    .collection("accessLogs")
+    .insertOne({
+      timestamp: new Date(),
+      door: doorId,
+      doorName,
+      username,
+      name,
+      doorsId,
+      keyId,
+      uid,
+      granted,
+      accessType,
+    })
+    .catch((err) => {
+      console.error("Failed to write accessLogs", err);
+      throw err;
+    });
+}
 
 router.post("/access", async (req, res) => {
   const { reason } = req.body;
@@ -29,8 +63,8 @@ router.get("/", async (req, res) => {
   if (since || until || cursor) {
     query.timestamp = {};
     if (cursor) query.timestamp.$lt = new Date(cursor);
-    if (since)  query.timestamp.$gte = new Date(since);
-    if (until)  query.timestamp.$lte = new Date(until);
+    if (since) query.timestamp.$gte = new Date(since);
+    if (until) query.timestamp.$lte = new Date(until);
   }
 
   const ands = [];
@@ -39,7 +73,9 @@ router.get("/", async (req, res) => {
   }
   if (search) {
     const re = new RegExp(search, "i");
-    ands.push({ $or: [{ doorName: re }, { door: re }, { username: re }, { name: re }] });
+    ands.push({
+      $or: [{ doorName: re }, { door: re }, { username: re }, { name: re }],
+    });
   }
   if (ands.length) query.$and = ands;
 
@@ -53,9 +89,8 @@ router.get("/", async (req, res) => {
     .limit(50)
     .toArray();
 
-  const nextCursor = logs.length === 50
-    ? logs[logs.length - 1].timestamp.toISOString()
-    : null;
+  const nextCursor =
+    logs.length === 50 ? logs[logs.length - 1].timestamp.toISOString() : null;
 
   res.json({ logs, cursor: nextCursor });
 });

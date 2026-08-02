@@ -15,29 +15,29 @@ const ARRAYS = new Set([
 
 router.get("/by-key/:associationId", async (req, res) => {
   const key = await req.ctx.db.collection("keys").findOne({
-    [req.associationType]: {$eq: req.params.associationId},
+    [req.associationType]: { $eq: req.params.associationId },
     enabled: { $eq: true },
   });
 
   if (!key) {
-    res.status(404).json({message: "Not found"});
+    res.status(404).json({ message: "Not found" });
     return;
   }
 
   const userDocument = await req.ctx.db.collection("users").findOne({
-    id: {$eq: key.userId},
-    disabled: {$ne: true},
+    id: { $eq: key.userId },
+    disabled: { $ne: true },
   });
   if (!userDocument) {
-    res.status(404).json({message: "User not found or disabled"});
+    res.status(404).json({ message: "User not found or disabled" });
     return;
   }
 
   let user;
   try {
     user = await searchOne(USER_BASE, `(ipaUniqueID=${key.userId})`);
-  } catch (err) {
-    res.status(500).json({message: "Internal server error"});
+  } catch {
+    res.status(500).json({ message: "Internal server error" });
     return;
   }
 

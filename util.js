@@ -52,7 +52,7 @@ export function iterableSearch(base, options) {
               }
               if (!foundEnd) {
                 // Waits for next chunk to be dispatched from the system
-                await new Promise((resolve, reject) => {
+                await new Promise((resolve) => {
                   // Safety check, make sure we don't deadlock
                   // (even though this call should be immediate)
                   if (entries.length) {

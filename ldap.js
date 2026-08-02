@@ -34,7 +34,7 @@ export function searchOne(base, filter, attributes) {
           res.once("searchEntry", onSearchEntry);
           res.once("end", onEnd);
         }
-      }
+      },
     );
   });
 }
@@ -54,7 +54,7 @@ resolve("_ldap._tcp.csh.rit.edu").then((records) => {
           throw err;
         }
         console.log("LDAP is bound!");
-      }
+      },
     );
   });
 });

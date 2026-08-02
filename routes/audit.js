@@ -1,6 +1,16 @@
 import { Router } from "express";
 const router = Router();
 
+export async function recordAudit(db, entry) {
+  return db
+    .collection("auditLogs")
+    .insertOne({ ...entry, timestamp: new Date() })
+    .catch((err) => {
+      console.error("Failed to write audit entry", err);
+      throw err;
+    });
+}
+
 router.get("/", async (req, res) => {
   const { cursor, search, action } = req.query;
   const query = {};
@@ -24,9 +34,10 @@ router.get("/", async (req, res) => {
     .limit(50)
     .toArray();
 
-  const nextCursor = entries.length === 50
-    ? entries[entries.length - 1].timestamp.toISOString()
-    : null;
+  const nextCursor =
+    entries.length === 50
+      ? entries[entries.length - 1].timestamp.toISOString()
+      : null;
 
   res.json({ entries, cursor: nextCursor });
 });
