@@ -8,7 +8,7 @@ export async function checkAccess(db, userId, doorId) {
       userId: { $in: [userId, "*"] },
       doorId: { $in: [doorId, "*"] },
     },
-    { sort: { priority: -1 } }
+    { sort: { priority: -1 } },
   );
   if (userTicket !== null) return userTicket.granted;
 
@@ -17,13 +17,7 @@ export async function checkAccess(db, userId, doorId) {
       doorId: { $in: ["*", doorId] },
       groupId: { $in: dbUser.groups ? dbUser.groups.concat("*") : ["*"] },
     },
-    { sort: { priority: -1 } }
+    { sort: { priority: -1 } },
   );
   return groupTicket?.granted;
-}
-
-export async function recordAudit(db, entry) {
-  db.collection("auditLogs").insertOne({ ...entry, timestamp: new Date() }).catch((err) => {
-    console.error("Failed to write audit entry", err);
-  });
 }

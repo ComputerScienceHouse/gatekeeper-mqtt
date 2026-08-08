@@ -6,7 +6,7 @@ export const USER_SCOPE = "gatekeeper_user";
 const USER_ID_CLAIM = "uuid";
 
 const issuerUrl = new URL(
-  process.env.GK_OIDC_ISSUER || "https://sso.csh.rit.edu/auth/realms/csh"
+  process.env.GK_OIDC_ISSUER || "https://sso.csh.rit.edu/auth/realms/csh",
 );
 export const clientId = process.env.GK_OIDC_CLIENT_ID;
 
@@ -35,7 +35,7 @@ export async function validateToken(token, requiredScope = null) {
   let payload;
   try {
     ({ payload } = await jwtVerify(token, JWKS, verifyOptions));
-  } catch (err) {
+  } catch {
     throw new AuthError("Invalid or expired token", 401);
   }
 
@@ -45,7 +45,7 @@ export async function validateToken(token, requiredScope = null) {
     if (!scopes.includes(requiredScope)) {
       throw new AuthError(
         `Token missing required scope: ${requiredScope}`,
-        403
+        403,
       );
     }
   }
@@ -62,19 +62,19 @@ export async function validateToken(token, requiredScope = null) {
 }
 
 export function oidcAuth(scope) {
-return async function oidcAuth(req, res, next) {
-  const authHeader = req.headers.authorization;
-  if (!authHeader?.startsWith("Bearer ")) {
-    return res.status(401).json({ message: "Bearer token required" });
-  }
-  try {
-    const { userId } = await validateToken(authHeader.slice(7), scope);
-    req.ctx.userId = userId;
-    next();
-  } catch (err) {
-    return res.status(err.status || 401).json({ message: err.message });
-  }
-}
+  return async function oidcAuth(req, res, next) {
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith("Bearer ")) {
+      return res.status(401).json({ message: "Bearer token required" });
+    }
+    try {
+      const { userId } = await validateToken(authHeader.slice(7), scope);
+      req.ctx.userId = userId;
+      next();
+    } catch (err) {
+      return res.status(err.status || 401).json({ message: err.message });
+    }
+  };
 }
 
 export function requireGroup(group) {

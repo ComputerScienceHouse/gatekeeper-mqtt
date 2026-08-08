@@ -1,30 +1,38 @@
 import { Router } from "express";
 import { doorHeartbeats } from "../state.js";
 import { checkAccess } from "../access.js";
+import { recordDoorUnlock } from "./logs.js";
 
 const router = Router();
 
-router.get("/:doorId/status", (req, res) => {
+function isDoorOffline(doorId) {
   // If it's been more than 1 minute, we assume something is broken...
-  const lastHeartbeat = doorHeartbeats.get(req.params.doorId);
-  if (lastHeartbeat) {
-    res.json({
-      guess: Date.now() - lastHeartbeat > 1000 * 60 ? "offline" : "online",
-      lastHeartbeat,
-    });
-  } else {
-    res.json({
-      guess: "offline",
-      lastHeartbeat: 0,
-    });
-  }
+  const lastHeartbeat = doorHeartbeats.get(doorId);
+  if (!lastHeartbeat) return true;
+  return Date.now() - lastHeartbeat > 1000 * 60;
+}
+
+function getDoorStatus(doorId) {
+  const lastHeartbeat = doorHeartbeats.get(doorId);
+  return {
+    guess: isDoorOffline(doorId) ? "offline" : "online",
+    lastHeartbeat: lastHeartbeat || 0,
+  };
+}
+
+router.get("/:doorId/status", (req, res) => {
+  res.json(getDoorStatus(req.params.doorId));
 });
 
 router.get("/", async (req, res) => {
   const doors = await req.ctx.db.collection("doors").find({}).toArray();
-  const accessResults = req.ctx.authMethod === "oidc"
-    ? await Promise.all(doors.map((d) => checkAccess(req.ctx.db, req.ctx.userId, String(d._id))))
-    : doors.map(() => true);
+  const accessResults = req.ctx.userId
+    ? await Promise.all(
+        doors.map((d) =>
+          checkAccess(req.ctx.db, req.ctx.userId, String(d._id)),
+        ),
+      )
+    : doors.map(() => false);
 
   res.json({
     doors: doors.map((door, i) => ({
@@ -36,16 +44,36 @@ router.get("/", async (req, res) => {
 });
 
 router.post("/:doorId/unlock", async (req, res) => {
-  if (req.ctx.authMethod === "oidc") {
-    const granted = await checkAccess(
-      req.ctx.db,
-      req.ctx.userId,
-      req.params.doorId
-    );
-    if (!granted) {
-      return res.status(403).json({ message: "Access denied" });
-    }
+  if (!req.ctx.userId) {
+    //auth method should always have a user identity
+    return res.status(403).json({ message: "Access denied" });
   }
+
+  const granted = await checkAccess(
+    req.ctx.db,
+    req.ctx.userId,
+    req.params.doorId,
+  );
+
+  if (!granted) {
+    return res.status(403).json({ message: "Access denied" });
+  }
+
+  if (isDoorOffline(req.params.doorId)) {
+    return res.status(400).json({ message: "Door is offline" });
+  }
+
+  const doorDoc = await req.ctx.db
+    .collection("doors")
+    .findOne({ _id: req.params.doorId });
+  await recordDoorUnlock(req.ctx.db, {
+    doorId: req.params.doorId,
+    doorName: doorDoc?.name,
+    username: req.ctx.username ?? req.ctx.userId,
+    name: req.ctx.name,
+    accessType: req.ctx.authMethod,
+  });
+
   req.ctx.mqtt.publish(`gk/${req.params.doorId}/unlock`, "");
   res.status(204).send(null);
 });

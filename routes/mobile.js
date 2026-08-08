@@ -8,7 +8,7 @@ const router = Router();
 router.use(oidcAuth(PROVISION_SCOPE));
 
 router.get("/provision", async (req, res) => {
-  const stem = { userId: req.ctx.userId, mobile: true };
+  const stem = { userId: req.ctx.userId, type: "mobile" };
   let key = await req.ctx.db.collection("keys").findOne(stem);
   if (!key) {
     key = {

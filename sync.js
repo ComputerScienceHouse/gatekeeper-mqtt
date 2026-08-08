@@ -4,10 +4,10 @@ export async function syncUser(db, user) {
   const id = user.attributes
     .find((attribute) => attribute.type == "ipaUniqueID")
     ._vals[0].toString("utf8");
-  let memberOf = user.attributes
-    .find((attribute) => attribute.type == "memberOf");
-  if (!memberOf)
-    return;
+  let memberOf = user.attributes.find(
+    (attribute) => attribute.type == "memberOf",
+  );
+  if (!memberOf) return;
   const document = {
     groups: memberOf._vals.map((value) => value.toString("utf8")),
     disabled:
@@ -25,9 +25,9 @@ export async function syncUser(db, user) {
     {
       $set: document,
     },
-    {upsert: true}
+    { upsert: true },
   );
-  return {...document, id};
+  return { ...document, id };
 }
 
 export async function syncUsers(db) {
@@ -41,7 +41,7 @@ export async function syncUsers(db) {
       timeLimit: 60 * 30, // 30 minutes
       attributes: ["memberOf", "ipaUniqueID", "nsAccountLock"],
       sizeLimit: 0, // unlimited
-    }
+    },
   );
 
   const promises = [];

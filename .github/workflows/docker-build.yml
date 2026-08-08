@@ -1,0 +1,23 @@
+name: Docker build
+
+on:
+  push:
+    branches:
+      - master
+
+  pull_request:
+    branches:
+      - master
+
+env:
+  IMAGE_NAME: gatekeeper-mqtt
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Run test
+        run: docker build . --file Dockerfile
