@@ -1,0 +1,2 @@
+allowBuilds:
+  unix-dgram: false
