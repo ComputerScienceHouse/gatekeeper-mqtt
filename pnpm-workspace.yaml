@@ -1,2 +1,3 @@
 allowBuilds:
   unix-dgram: false
+verifyDepsBeforeRun: false
