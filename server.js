@@ -209,7 +209,7 @@ connectionPromise.then(async () => {
         console.error("Failed to insert into accessLogs", err);
       });
 
-      client.publish('gk/${doorId}/unlock');
+      client.publish(`gk/${doorId}/unlock`);
     } else if (topic.endsWith("/heartbeat")) {
       const doorId = topic.slice(3, -10);
       doorHeartbeats.set(doorId, Date.now());
