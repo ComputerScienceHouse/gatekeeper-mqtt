@@ -77,13 +77,13 @@ export function oidcAuth(scope) {
   };
 }
 
-export function requireGroup(group) {
+export function requireGroup(...allowedGroups) {
   return function (req, res, next) {
     if (req.ctx.authMethod === "secret") {
       return next();
     }
     const groups = req.ctx.groups ?? [];
-    if (!groups.includes(group)) {
+    if (!groups.some((group) => allowedGroups.includes(group))) {
       return res.status(403).json({ message: "Unauthorized!" });
     }
     next();
