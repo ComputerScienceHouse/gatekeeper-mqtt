@@ -225,7 +225,7 @@ connectionPromise.then(async () => {
     } else if (topic.endsWith("/heartbeat")) {
       const doorId = topic.slice(3, -10);
       doorHeartbeats.set(doorId, Date.now());
-      statsd.increment("door.heartbeat", { door: doorId });
+      statsd.increment("door.heartbeat", { door: doorId, door_name: names.get(doorId) ?? doorId });
       console.log(`ACKing a heartbeat from ${doorId}!`);
     }
   });
